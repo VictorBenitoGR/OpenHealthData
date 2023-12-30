@@ -9,3 +9,25 @@ This project seeks to capture several performance variables of the health sector
 
 ## Background
 This project started as a personal initiative during my university career at Tecnológico de Monterrey (ITESM), who has agreements with several companies to facilitate students the development of projects attacking the specific problems they have (in this case Teleton CRIT Morelia).
+
+![Event](assets/OHeaD_dashboards.png)
+
+## Current development
+
+> [!IMPORTANT]
+> Pending approval and modifications to be treated as Open Source, as intended.
+
+
+## Future work
+
+- Facilitating export with gganimate.
+- Native ggplot2-shiny dashboards.
+- Local UX/UI.
+
+
+## Contact
+
+Feel free to reach out if you have any questions or feedback.
+
+- **Email:** victorbenitogr@gmail.com
+- **The subject must start with:**  [OpenHealthData]
