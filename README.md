@@ -12,6 +12,7 @@ This project started as a personal initiative during my university career at Tec
 
 ![Event](assets/OHeaD_dashboards.png)
 
+
 ## Current development
 
 > [!IMPORTANT]
