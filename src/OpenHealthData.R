@@ -3,7 +3,17 @@
 
 # *** Packages ----------------------------------------------------------------
 
-library(ggplot2)
+library(ggplot2) #         Visualización de datos
+library(lubridate) #       Manipulación de fechas
+library(forcats) #         Manipulación de factores
+library(scales) #          Escalas de gráficos
+library(tm) #              Text Mining
+library(wordcloud) #       Nubes de palabras
+library(RColorBrewer) #    Paletas de colores
+library(shiny) #           Aplicaciones web interactivas
+library(shinydashboard) #  Diseño de aplicaciones web
+library(ggplot2) #         Visualización de datos
+library(plotly) #          Gráficos interactivos
 
 # *** Tiempos de cirugía de emergencia ----------------------------------------
 
@@ -49,7 +59,7 @@ a1 <- ggplot(df, aes(
   x = as.factor(semana), y = tiempos_cirugia, fill = periodo
 )) +
   geom_boxplot() +
-  labs(y = "Tiempos de cirugía (minutos)", x = "Semana") +
+  labs(y = "Tiempos de cirugía (minutos)", x = "Semana del trimestre") +
   scale_fill_manual(values = c(
     "Pre-acreditación" = "#1a39b6", "Post-acreditación" = "#009543"
   )) +
@@ -57,7 +67,7 @@ a1 <- ggplot(df, aes(
   theme(
     legend.position = "none",
     axis.title = element_text(face = "bold"),
-    axis.text = element_text(face = "bold"),
+    axis.text = element_text(face = "bold", colour = "black"),
     legend.text = element_text(face = "bold")
   ) +
   geom_hline(yintercept = 60, linetype = "dashed", color = "red", size = 1)
@@ -66,6 +76,8 @@ a1 <- ggplot(df, aes(
 ggsave("assets/a1.jpg", a1, width = 10, height = 6, units = "in", dpi = 600)
 
 # *** Medidas de control de infecciones ---------------------------------------
+# ? lubridate
+# ? forcats
 
 # * A2 Medidas de control de infecciones
 # Descripción:  Cumplimiento de las normas y protocolos de control de
@@ -86,10 +98,6 @@ ggsave("assets/a1.jpg", a1, width = 10, height = 6, units = "in", dpi = 600)
 # Objetivo post-acreditación: ≥ 99% de cumplimiento.
 # Medición trimestral.
 
-# Cargar las bibliotecas necesarias
-library(ggplot2)
-library(lubridate)
-
 # Generar datos falsos
 set.seed(1293)
 data <- data.frame(
@@ -99,7 +107,8 @@ data <- data.frame(
 
 # Crear variables de año, mes y día
 data$Año <- year(data$Fecha)
-data$Mes <- month(data$Fecha, label = TRUE)
+# Invertir el orden de los meses
+data$Mes <- fct_rev(factor(month(data$Fecha, label = TRUE)))
 data$Día <- day(data$Fecha)
 
 # Crear la gráfica de calendario de calor
@@ -108,16 +117,23 @@ a2 <- ggplot(data, aes(x = Día, y = Mes, fill = factor(Cumplimiento))) +
   scale_fill_manual(values = c("#1a39b6", "#009543"), guide = FALSE) +
   facet_grid(Año ~ ., scales = "free_y") +
   labs(
-    x = "Día del mes", y = "",
-    title = "Cumplimiento de las normas de lavado de manos"
+    x = "Día del mes", y = ""
   ) +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  theme(
+    axis.text.x = element_text(
+      hjust = 1, face = "bold", colour = "black"
+    ),
+    axis.text.y = element_text(face = "bold", colour = "black"),
+    axis.title.x = element_text(face = "bold", colour = "black"),
+    axis.title.y = element_text(face = "bold", colour = "black")
+  )
 
 # Exportar
 ggsave("assets/a2.jpg", a2, width = 10, height = 6, units = "in", dpi = 600)
 
 # *** Visitas ambulatorias ----------------------------------------------------
+# ? scales
 
 # * B1 Visitas ambulatorias
 # Descripción:  Visita = Total de servicios ambulatorios brindados a una sola
@@ -147,25 +163,33 @@ data <- data.frame(
   )
 )
 
-library(scales)
+okabe_ito_palette <- c(
+  "#181818", "#E69F00", "#56B4E9", "#009E73",
+  "#F0E442", "#0072B2", "#D55E00", "#CC79A7"
+)
+
+# Función para formatear las etiquetas del eje y
+format_y <- function(x) {
+  paste0(x / 1000, "k")
+}
 
 # Crear la gráfica de barras apiladas
 b1 <- ggplot(data, aes(x = factor(Año), y = Visitas, fill = Servicio)) +
   geom_bar(stat = "identity") +
   labs(
-    x = "Año", y = "Número de visitas",
-    title = "Visitas ambulatorias por servicio de hospital"
+    x = NULL, y = "Número de visitas"
   ) +
   theme_classic() +
-  scale_fill_brewer(palette = "Set3") +
+  scale_fill_manual(values = okabe_ito_palette) +
   theme(
-    plot.title = element_text(face = "bold"),
-    axis.title.x = element_text(face = "bold"),
-    axis.title.y = element_text(face = "bold"),
-    axis.text.x = element_text(face = "bold"),
-    axis.text.y = element_text(face = "bold")
+    plot.title = element_text(face = "bold", colour = "black"),
+    axis.title.x = element_text(face = "bold", colour = "black"),
+    axis.title.y = element_text(face = "bold", colour = "black"),
+    axis.text.x = element_text(face = "bold", colour = "black"),
+    axis.text.y = element_text(face = "bold", colour = "black"),
+    legend.title = element_text(face = "bold", colour = "black")
   ) +
-  scale_y_continuous(labels = comma)
+  scale_y_continuous(labels = format_y)
 
 # Exportar
 ggsave("assets/b1.jpg", b1, width = 10, height = 6, units = "in", dpi = 600)
@@ -187,9 +211,6 @@ ggsave("assets/b1.jpg", b1, width = 10, height = 6, units = "in", dpi = 600)
 #                             medidos por año de contrato.
 # Medición anual.
 
-# Cargar la biblioteca necesaria
-library(ggplot2)
-
 # Generar datos falsos
 set.seed(122)
 data <- data.frame(
@@ -203,31 +224,47 @@ data <- data.frame(
   )
 )
 
-# Crear la gráfica de línea
-b2 <- ggplot(data, aes(x = Año, y = Admisiones)) +
-  geom_line(color = "#009543", size = 1.5) +
-  geom_smooth(
-    method = "loess", se = FALSE, color = "red", linetype = "dashed"
+# Encontrar el valor mínimo de las admisiones
+min_admisiones <- min(data$Admisiones, na.rm = TRUE)
+
+# Crear un nuevo dataframe para la línea roja
+line_data <- data.frame(
+  Año = data$Año,
+  Valor = ifelse(data$Año == 2013, data$Admisiones[data$Año == 2013] + 200,
+    data$Admisiones - 100
+  )
+)
+
+# Crear la gráfica de barras con la escala ajustada
+b2 <- ggplot() +
+  geom_bar(data = data, aes(
+    x = Año, y = Admisiones
+  ), stat = "identity", fill = "#009543") +
+  geom_line(
+    data = line_data, aes(x = Año, y = Valor),
+    color = "black", linetype = "dashed", size = 1
   ) +
-  geom_point() +
   labs(
-    x = "Año", y = "Número de admisiones",
-    title = "Admisiones completas de pacientes por año"
+    x = NULL, y = "Número de admisiones"
   ) +
+  coord_cartesian(ylim = c(min_admisiones, NA)) +
+  scale_y_continuous(labels = scales::comma) +
   theme_classic() +
   theme(
-    plot.title = element_text(face = "bold"),
-    axis.title.x = element_text(face = "bold"),
-    axis.title.y = element_text(face = "bold"),
-    axis.text.x = element_text(face = "bold"),
-    axis.text.y = element_text(face = "bold")
+    axis.title.x = element_text(face = "bold", colour = "black"),
+    axis.title.y = element_text(face = "bold", colour = "black"),
+    axis.text.x = element_text(face = "bold", colour = "black"),
+    axis.text.y = element_text(face = "bold", colour = "black")
   ) +
-  scale_y_continuous(labels = scales::comma)
+  scale_y_continuous(labels = format_y)
 
 # Exportar
 ggsave("assets/b2.jpg", b2, width = 10, height = 6, units = "in", dpi = 600)
 
 # *** Satisfacción del paciente y su familia ----------------------------------
+# ? tm
+# ? wordcloud
+# ? RColorBrewer
 
 # * C1 Satisfacción del paciente y su familia
 # Descripción:  Satisfacción general de pacientes y familiares con las
@@ -240,18 +277,13 @@ ggsave("assets/b2.jpg", b2, width = 10, height = 6, units = "in", dpi = 600)
 # Objetivo post-acreditación: Tasa de satisfacción ≥ 85%.
 # Medición trimestral.
 
-# Librerías
-library(tm)
-library(wordcloud)
-library(RColorBrewer)
-
 # Definir el texto
 texto <- paste(
   "moderno tecnología_avanzada satisfacción rápidos precisos bien_capacitado",
-  "salvado mejorado fiables seguros amabilidad profesionalidad empleo calidad",
+  "salvado mejorado fiables seguros amabilidad profesionalidad genial calidad",
   "acceso higiene cómodo logros avances mejoras moderno tecnología_avanzada",
   "satisfacción rápidos precisos bien_capacitado salvado mejorado fiables",
-  "amabilidad profesionalidad empleo calidad acceso higiene cómodo logros",
+  "amabilidad profesionalidad bueno calidad acceso higiene cómodo logros",
   "mejoras frustración gestión_administrativa largas_esperas problema",
   "retrasos preocupación errores dificultades quejas trato_despectivo",
   "carga_financiera críticos costos_operativos inconsistencias lapsos",
@@ -273,15 +305,20 @@ dtm <- TermDocumentMatrix(corpus)
 word_freqs <- as.data.frame(as.matrix(dtm))
 word_freqs <- sort(rowSums(word_freqs), decreasing = TRUE)
 
+# Resto del código...
+
 # Crear un data frame con las palabras y su frecuencia
-df <- data.frame(word = names(word_freqs), freq = word_freqs)
+df <- data.frame(
+  word = names(word_freqs), freq = runif(length(word_freqs), min = 1, max = 50)
+)
 
 # Definir las palabras positivas y negativas
 positive_words <- c(
   "moderno", "tecnología_avanzada", "satisfacción", "rápidos",
   "precisos", "bien_capacitado", "salvado", "mejorado", "fiables",
-  "seguros", "amabilidad", "profesionalidad", "empleo", "calidad",
-  "acceso", "higiene", "cómodo", "logros", "avances", "mejoras"
+  "seguros", "amabilidad", "profesionalidad", "genial", "calidad",
+  "acceso", "higiene", "cómodo", "logros", "avances", "mejoras",
+  "bueno"
 )
 
 negative_words <- c(
@@ -292,7 +329,7 @@ negative_words <- c(
   "inconsistencias", "lapsos", "urgentes"
 )
 
-# Asignar un color a cada palabra "#1a39b6", "#009543"
+# Asignar un color a cada palabra
 df$color <- ifelse(
   df$word %in% positive_words, "#1a39b6",
   ifelse(
@@ -300,14 +337,29 @@ df$color <- ifelse(
   )
 )
 
-# Abrir un dispositivo gráfico
-jpeg("assets/c1.jpg")
+# Crear dos data frames separados para las palabras positivas y negativas
+df_pos <- df[df$word %in% positive_words, ]
+df_neg <- df[df$word %in% negative_words, ]
 
-# Crear la nube de palabras
+# Abrir un dispositivo gráfico
+jpeg("assets/c1.jpg", width = 2600, height = 1200)
+
+# Dividir la gráfica en dos paneles
+par(mfrow = c(1, 2))
+
+# Crear la nube de palabras para las palabras positivas
 wordcloud(
-  words = df$word, freq = df$freq, max.words = 50, random.order = FALSE,
-  colors = df$color, scale = c(5, 0.5)
+  words = df_pos$word, freq = df_pos$freq, max.words = 50, random.order = FALSE,
+  colors = "#009543", scale = c(10, 0.5)
 )
+mtext("87%", side = 3, line = -4, cex = 8, col = "#009543", font = 2)
+
+# Crear la nube de palabras para las palabras negativas
+wordcloud(
+  words = df_neg$word, freq = df_neg$freq, max.words = 50, random.order = FALSE,
+  colors = "#1a39b6", scale = c(10, 0.5)
+)
+mtext("13%", side = 3, line = -4, cex = 8, col = "#1a39b6", font = 2)
 
 # Cerrar el dispositivo gráfico
 dev.off()
@@ -376,19 +428,20 @@ e1 <- ggplot(data, aes(
   ) +
   labs(
     x = "Uso del equipo (veces por trimestre)", y = "Cumplimiento (%)",
-    title = "Cumplimiento de los estándares de servicio en función del uso del equipo", # nolint: line_length_linter.
     color = "Persona",
     shape = "Tipo de equipo"
   ) +
   theme_classic() +
   theme(
-    plot.title = element_text(face = "bold"),
-    axis.title.x = element_text(face = "bold"),
-    axis.title.y = element_text(face = "bold"),
-    axis.text.x = element_text(face = "bold"),
-    axis.text.y = element_text(face = "bold")
+    plot.title = element_text(face = "bold", colour = "black"),
+    axis.title.x = element_text(face = "bold", colour = "black"),
+    axis.title.y = element_text(face = "bold", colour = "black"),
+    axis.text.x = element_text(face = "bold", colour = "black"),
+    axis.text.y = element_text(face = "bold", colour = "black"),
+    legend.title = element_text(face = "bold", colour = "black")
   ) +
-  scale_y_continuous(labels = scales::percent, limits = c(0.9, 1))
+  scale_y_continuous(labels = scales::percent, limits = c(0.9, 1)) +
+  scale_color_manual(values = okabe_ito_palette) # Aplicar la paleta de colores
 
 # Exportar
 ggsave("assets/e1.jpg", e1, width = 10, height = 6, units = "in", dpi = 600)
@@ -418,79 +471,71 @@ for (persona in personas) {
 }
 
 # Crear el boxplot
-library(ggplot2)
 h1 <- ggplot(data, aes(x = Persona, y = Cumplimiento, fill = Persona)) +
   geom_boxplot() +
   # línea de objetivo
-  geom_hline(yintercept = 0.9, linetype = "dashed", color = "black") +
-  scale_fill_brewer(palette = "Set3") +
+  geom_hline(yintercept = 0.9, linetype = "dashed", color = "red", size = 1) +
+  scale_fill_manual(values = okabe_ito_palette) + # Aplicar la paleta de colores
   labs(
-    x = "Persona", y = "Cumplimiento (%)",
-    title = "Cumplimiento de los estándares de servicio por persona"
+    x = NULL, y = "Cumplimiento (%)",
   ) +
   scale_y_continuous(labels = scales::percent) +
-  theme_classic()
+  theme_classic() +
+  theme(
+    axis.title.x = element_text(face = "bold", colour = "black"),
+    axis.title.y = element_text(face = "bold", colour = "black"),
+    axis.text.x = element_text(face = "bold", colour = "black"),
+    axis.text.y = element_text(face = "bold", colour = "black"),
+    legend.position = "none"
+  )
 
 # Exportar
 ggsave("assets/h1.jpg", h1, width = 10, height = 6, units = "in", dpi = 600)
 
 # *** ShinyApp interactivo ----------------------------------------------------
+# ? shiny
+# ? shinydashboard
+# ? plotly
 
-library(shiny)
-library(shinydashboard)
-library(ggplot2)
-library(plotly)
+# Interfaz de usuario
+ui <- fluidPage(
+  titlePanel(tags$b("Queen Mamohato Memorial Hospital")),
+  fluidRow(
+    column(3, plotlyOutput("a1", height = "40vh")),
+    column(3, plotlyOutput("a2", height = "40vh")),
+    column(3, plotlyOutput("b1", height = "40vh")),
+    column(3, plotlyOutput("b2", height = "40vh"))
+  ),
+  fluidRow(
+    column(4, img(
+      src = "img/c1.jpg",
+      height = "40vh", width = "100%"
+    )),
+    column(4, plotlyOutput("e1", height = "40vh")),
+    column(4, plotlyOutput("h1", height = "40vh"))
+  )
+)
 
-# # Definir la interfaz de usuario
-# ui <- dashboardPage(
-#   dashboardHeader(title = "OpenHealthData"),
-#   dashboardSidebar(
-#     sidebarMenu(
-#       menuItem("Dashboard", tabName = "dashboard")
-#     )
-#   ),
-#   dashboardBody(
-#     tabItems(
-#       tabItem(
-#         tabName = "dashboard",
-#         fluidRow(
-#           box(plotlyOutput("plot_a1"), width = 4),
-#           box(plotlyOutput("plot_a2"), width = 4),
-#           box(plotlyOutput("plot_b1"), width = 4),
-#           box(plotlyOutput("plot_b2"), width = 4),
-#           box(plotlyOutput("plot_c1"), width = 4),
-#           box(plotlyOutput("plot_e1"), width = 4),
-#           box(plotlyOutput("plot_h1"), width = 4)
-#         )
-#       )
-#     )
-#   )
-# )
+# Servidor
+server <- function(input, output) {
+  output$a1 <- renderPlotly({
+    ggplotly(a1)
+  })
+  output$a2 <- renderPlotly({
+    ggplotly(a2)
+  })
+  output$b1 <- renderPlotly({
+    ggplotly(b1)
+  })
+  output$b2 <- renderPlotly({
+    ggplotly(b2)
+  })
+  output$e1 <- renderPlotly({
+    ggplotly(e1)
+  })
+  output$h1 <- renderPlotly({
+    ggplotly(h1)
+  })
+}
 
-# # Definir el servidor
-# server <- function(input, output) {
-#   output$plot_a1 <- renderPlotly({
-#     ggplotly(a1)
-#   })
-#   output$plot_a2 <- renderPlotly({
-#     ggplotly(a2)
-#   })
-#   output$plot_b1 <- renderPlotly({
-#     ggplotly(b1)
-#   })
-#   output$plot_b2 <- renderPlotly({
-#     ggplotly(b2)
-#   })
-#   output$plot_c1 <- renderPlotly({
-#     ggplotly(c1)
-#   })
-#   output$plot_e1 <- renderPlotly({
-#     ggplotly(e1)
-#   })
-#   output$plot_h1 <- renderPlotly({
-#     ggplotly(h1)
-#   })
-# }
-
-# # Ejecutar la aplicación
-# shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server)
