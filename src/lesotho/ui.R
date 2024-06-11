@@ -14,6 +14,8 @@ library(shiny) #           Aplicaciones web interactivas
 library(shinydashboard) #  Diseño de aplicaciones web
 library(ggplot2) #         Visualización de datos
 library(plotly) #          Gráficos interactivos
+library(dplyr) #           Manipulación de datos
+library(tidyr) #           Manipulación de datos
 
 # *** Interfaz de usuario -----------------------------------------------------
 
@@ -30,18 +32,36 @@ ui <- fluidPage(
     }
   "))),
   titlePanel(tags$b("Queen Mamohato Memorial Hospital")),
-  fluidRow(
-    column(3, plotlyOutput("a1", height = "40vh")),
-    column(3, plotlyOutput("a2", height = "40vh")),
-    column(3, plotlyOutput("b1", height = "40vh")),
-    column(3, plotlyOutput("b2", height = "40vh"))
-  ),
-  fluidRow(
-    column(4, div(class = "center-vertically", div(id = "myImage", img(
-      src = "img/c1.jpg",
-      width = "100%"
-    )))),
-    column(4, plotlyOutput("e1", height = "40vh")),
-    column(4, plotlyOutput("h1", height = "40vh"))
+  tabsetPanel(
+    tabPanel(
+      "Licitación",
+      fluidRow(
+        column(3, plotlyOutput("a1", height = "40vh")),
+        column(3, plotlyOutput("a2", height = "40vh")),
+        column(3, plotlyOutput("b1", height = "40vh")),
+        column(3, plotlyOutput("b2", height = "40vh"))
+      ),
+      fluidRow(
+        column(4, div(class = "center-vertically", div(id = "myImage", img(
+          src = "img/c1.jpg",
+          width = "100%"
+        )))),
+        column(4, plotlyOutput("e1", height = "40vh")),
+        column(4, plotlyOutput("h1", height = "40vh"))
+      )
+    ),
+    tabPanel(
+      "Facturas",
+      fluidRow(
+        column(4, plotlyOutput("f1", height = "40vh")),
+        column(4, plotlyOutput("f2", height = "40vh")),
+        column(4, plotlyOutput("f3", height = "40vh"))
+      ),
+      fluidRow(
+        column(4, plotlyOutput("f4", height = "40vh")),
+        column(4, plotlyOutput("f5", height = "40vh")),
+        column(4, plotlyOutput("f6", height = "40vh"))
+      )
+    )
   )
 )

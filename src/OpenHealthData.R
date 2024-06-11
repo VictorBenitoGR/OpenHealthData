@@ -1,5 +1,5 @@
-# * OpenHealthData
-# * https://github.com/VictorBenitoGR/OpenHealthData
+# *** OpenHealthData
+# *** https://github.com/VictorBenitoGR/OpenHealthData
 
 # *** Packages ----------------------------------------------------------------
 
@@ -14,6 +14,8 @@ library(shiny) #           Aplicaciones web interactivas
 library(shinydashboard) #  Diseño de aplicaciones web
 library(ggplot2) #         Visualización de datos
 library(plotly) #          Gráficos interactivos
+library(dplyr) #           Manipulación de datos
+library(tidyr) #           Manipulación de datos
 
 # *** Tiempos de cirugía de emergencia ----------------------------------------
 
@@ -491,6 +493,274 @@ h1 <- ggplot(data, aes(x = Persona, y = Cumplimiento, fill = Persona)) +
 
 # Exportar
 ggsave("assets/h1.jpg", h1, width = 10, height = 6, units = "in", dpi = 600)
+
+# *** Generate random invoice data --------------------------------------------
+
+library(lubridate)
+
+generate_random_data <- function(num_invoices = 100) {
+  # Inicializar data frames con nombres de columnas
+  invoices <- data.frame(invoice_id = integer(), invoice_number = character(), invoice_date = character(), purchase_order_number = character(), payment_terms = character(), due_date = character(), stringsAsFactors = FALSE)
+  invoice_items <- data.frame(invoice_id = integer(), description = character(), product_code = character(), unit_price = numeric(), stringsAsFactors = FALSE)
+
+  for (invoice_id in 1:num_invoices) {
+    invoice_details <- random_invoice_details()
+    invoice_details$invoice_id <- invoice_id # Asegurar que invoice_id es una columna en invoices
+
+    # Agregar detalles de factura a 'invoices'
+    invoices <- rbind(invoices, invoice_details)
+
+    items <- random_items()
+    # Asegurar que cada ítem tenga el invoice_id correcto
+    items$invoice_id <- rep(invoice_id, nrow(items))
+
+    # Agregar detalles de ítem a 'invoice_items'
+    invoice_items <- rbind(invoice_items, items)
+  }
+
+  list(invoices = invoices, invoice_items = invoice_items)
+}
+
+random_date <- function(start_date, end_date) {
+  as.Date(start_date + sample.int(as.integer(end_date - start_date), 1))
+}
+
+random_invoice_details <- function() {
+  invoice_date <- as.Date(random_date(as.Date("2010-01-01"), as.Date("2014-12-31")))
+  due_date <- as.Date(invoice_date + days(30)) # Convertir a 'Date' para eliminar la hora
+
+  supplier_names <- c("Global Health Supplies", "Pharma Solutions Inc.", "MediCorp Ltd.", "HealthTech Supplies", "Lesotho Medical Supplies")
+  supplier_name <- sample(supplier_names, 1) # Seleccionar un proveedor aleatoriamente
+
+  data.frame(
+    invoice_number = paste("INV", format(invoice_date, "%Y%m%d"), sample(100, 999, size = 1), sep = "-"),
+    invoice_date = as.character(invoice_date),
+    purchase_order_number = paste("PO", sample(1000, 9999, size = 1), sep = "-"),
+    payment_terms = sample(c("Net 30 days", "Net 60 days"), size = 1),
+    due_date = as.character(due_date), # Convertir a cadena para mantener consistencia
+    supplier_name = supplier_name # Agregar el nombre del proveedor
+  )
+}
+
+random_items <- function() {
+  possible_items <- data.frame(
+    description = c("N95 Masks", "Latex Gloves", "Alcohol Wipes", "Stethoscope", "X-Ray Machine", "Ultrasound Scanner", "Surgical Masks", "Surgical Gowns", "Ventilator", "Ibuprofen Tablets", "Paracetamol Tablets", "Antibiotics", "Insulin", "Morphine", "Hydroxychloroquine", "PPE Kits", "Face Shields", "Thermometers"),
+    product_code = c("N95-100", "LG-200", "AW-300", "ST-400", "XR-5000", "US-6000", "SM-700", "SG-800", "VT-9000", "IB-100", "PA-200", "AB-300", "IN-400", "MO-500", "HY-600", "PP-700", "FS-800", "TH-900"),
+    unit_price = c(1.00, 0.15, 0.05, 20.00, 15000.00, 20000.00, 0.50, 2.00, 5000.00, 0.10, 0.05, 1.00, 10.00, 5.00, 2.00, 10.00, 2.00, 5.00),
+    stringsAsFactors = FALSE
+  )
+  num_items <- sample(1:5, 1) # Generar entre 1 y 5 ítems por factura
+  items <- possible_items[sample(nrow(possible_items), num_items), ]
+
+  # Asignar quantity basado en unit_price
+  items$quantity <- ifelse(items$unit_price > 100, 1, sample(1:100, nrow(items)))
+
+  return(items)
+}
+
+# Generar datos
+random_data <- generate_random_data(1000)
+
+View(random_data$invoices)
+View(random_data$invoice_items)
+
+# *** Indicadores de facturas -------------------------------------------------
+
+# Terminamos teniendo random_data$invoices con las columnas:
+# invoice_id, invoice_number, invoice_date, purchase_order_number, payment_terms, due_date, supplier_name
+
+# Y random_data$invoice_items con las columnas:
+# invoice_id, description, product_code, unit_price, quantity
+
+# ¿Qué indicadores podríamos hacer?
+
+# * Número de facturas emitidas por mes, segmentadas por description (item)
+
+# Preparar los datos
+datos_completos <- left_join(random_data$invoices, random_data$invoice_items, by = "invoice_id")
+datos_completos$invoice_month <- floor_date(as.Date(datos_completos$invoice_date), "month")
+
+# Ajustar la extracción del mes para ignorar el año
+datos_completos$invoice_month <- format(as.Date(datos_completos$invoice_date), "%m")
+
+# Agrupar y resumir los datos nuevamente, esta vez solo por mes y descripción
+datos_agrupados <- datos_completos %>%
+  group_by(invoice_month, description) %>%
+  summarise(numero_facturas = n_distinct(invoice_id), .groups = "drop")
+
+# Calcular el total de facturas por descripción
+totales_por_descripcion <- datos_agrupados %>%
+  group_by(description) %>%
+  summarise(total_facturas = sum(numero_facturas)) %>%
+  ungroup() %>%
+  arrange(desc(total_facturas)) %>%
+  top_n(7, total_facturas)
+
+# Filtrar solo las top 8 descripciones en datos_agrupados
+datos_filtrados <- datos_agrupados %>%
+  filter(description %in% totales_por_descripcion$description)
+
+# Crear la gráfica con los datos filtrados
+f1 <- ggplot(datos_filtrados, aes(x = invoice_month, y = numero_facturas, fill = description)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual(values = okabe_ito_palette) + # Ajustar para usar solo los primeros 8 colores
+  theme_classic() +
+  labs(x = NULL, y = "Número de Facturas", fill = "Descripción del Producto") +
+  scale_x_discrete(labels = c("01" = "Enero", "02" = "Febrero", "03" = "Marzo", "04" = "Abril", "05" = "Mayo", "06" = "Junio", "07" = "Julio", "08" = "Agosto", "09" = "Septiembre", "10" = "Octubre", "11" = "Noviembre", "12" = "Diciembre")) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold", colour = "black"),
+    axis.title.x = element_text(face = "bold", colour = "black"),
+    axis.title.y = element_text(face = "bold", colour = "black"),
+    legend.title = element_text(face = "bold", colour = "black"),
+    legend.text = element_text(colour = "black")
+  )
+
+# Exportar la gráfica ajustada
+ggsave("assets/f1.jpg", f1, width = 10, height = 6, units = "in", dpi = 600)
+
+# * Valor total de facturas emitidas por mes
+
+library(ggplot2)
+library(scales)
+
+# Filtrar para incluir solo el top 8 de elementos basado en valor_total
+datos_top8 <- datos_agrupados_valor_desc %>%
+  group_by(description) %>%
+  summarise(total_valor = sum(valor_total)) %>%
+  top_n(8, total_valor) %>%
+  inner_join(datos_agrupados_valor_desc, by = "description")
+
+# Crear la gráfica sin aplicar formateador personalizado en el eje Y
+f2 <- ggplot(datos_top8, aes(x = invoice_month, y = valor_total, fill = description)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_y_log10() + # Se omite el argumento labels
+  scale_fill_manual(values = okabe_ito_palette) +
+  theme_classic() +
+  labs(x = NULL, y = "Valor Total de Facturas", fill = "Tipo de Ítem") +
+  scale_x_discrete(labels = c("01" = "Enero", "02" = "Febrero", "03" = "Marzo", "04" = "Abril", "05" = "Mayo", "06" = "Junio", "07" = "Julio", "08" = "Agosto", "09" = "Septiembre", "10" = "Octubre", "11" = "Noviembre", "12" = "Diciembre")) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold", colour = "black"),
+    axis.title.x = element_text(face = "bold", colour = "black"),
+    axis.title.y = element_text(face = "bold", colour = "black"),
+    legend.title = element_text(face = "bold", colour = "black"),
+    legend.text = element_text(colour = "black"),
+    legend.position = "bottom"
+  )
+
+# Exportar la gráfica
+ggsave("./assets/f2.jpg", f2, width = 10, height = 6, units = "in", dpi = 600)
+
+# * Valor promedio de facturas emitidas por mes
+
+# Calcular el valor promedio de las facturas por mes
+datos_promedio <- datos_agrupados_valor_desc %>%
+  group_by(invoice_month) %>%
+  summarise(promedio_valor = mean(valor_total), .groups = "drop")
+
+# Crear la gráfica de línea con degradado
+f3 <- ggplot(datos_promedio, aes(x = invoice_month, y = promedio_valor, group = 1)) +
+  geom_line(color = "#1a39b6", size = 1.5) +
+  geom_point(color = "#009543", size = 3) +
+  geom_smooth(method = "loess", se = FALSE, color = "#009543", linetype = "dashed") +
+  theme_classic() +
+  labs(x = NULL, y = "Valor Promedio de Facturas") +
+  scale_x_discrete(labels = c("01" = "Enero", "02" = "Febrero", "03" = "Marzo", "04" = "Abril", "05" = "Mayo", "06" = "Junio", "07" = "Julio", "08" = "Agosto", "09" = "Septiembre", "10" = "Octubre", "11" = "Noviembre", "12" = "Diciembre")) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold", colour = "black"),
+    axis.title.x = element_text(face = "bold", colour = "black"),
+    axis.title.y = element_text(face = "bold", colour = "black")
+  )
+
+# Exportar la gráfica
+ggsave("./assets/f3.jpg", f3, width = 10, height = 6, units = "in", dpi = 600)
+
+# * Número de facturas emitidas por proveedor
+
+# Calcular el número total de facturas por proveedor
+datos_proveedor <- datos_completos %>%
+  group_by(supplier_name) %>%
+  summarise(numero_facturas = n_distinct(invoice_id), .groups = "drop") %>%
+  arrange(desc(numero_facturas)) %>%
+  top_n(8, numero_facturas)
+
+# Filtrar solo los 8 principales proveedores en datos_completos
+datos_filtrados_proveedor <- datos_completos %>%
+  filter(supplier_name %in% datos_proveedor$supplier_name)
+
+# Crear la gráfica de barras apiladas
+f4 <- ggplot(datos_filtrados_proveedor, aes(x = invoice_month, fill = supplier_name)) +
+  geom_bar() +
+  scale_fill_manual(values = okabe_ito_palette[1:8]) +
+  theme_classic() +
+  labs(x = NULL, y = "Número de Facturas", fill = "Proveedor") +
+  scale_x_discrete(labels = c("01" = "Enero", "02" = "Febrero", "03" = "Marzo", "04" = "Abril", "05" = "Mayo", "06" = "Junio", "07" = "Julio", "08" = "Agosto", "09" = "Septiembre", "10" = "Octubre", "11" = "Noviembre", "12" = "Diciembre")) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold", colour = "black"),
+    axis.title.x = element_text(face = "bold", colour = "black"),
+    axis.title.y = element_text(face = "bold", colour = "black"),
+    legend.title = element_text(face = "bold", colour = "black"),
+    legend.text = element_text(colour = "black")
+  )
+
+# Exportar la gráfica
+ggsave("./assets/f4.jpg", f4, width = 10, height = 6, units = "in", dpi = 600)
+
+# * ¿Cuántos días nos dan los proveedores para pagar?
+
+# Asegúrate de que okabe_ito_palette está definida correctamente
+# okabe_ito_palette <- c("color1", "color2", "color3", ...)
+
+# Modificar el gráfico de barras para mostrar los términos de pago divididos por supplier_name
+# y aplicar la paleta de colores okabe_ito_palette
+f5 <- ggplot(datos_completos, aes(x = payment_terms, fill = supplier_name)) +
+  geom_bar() +
+  scale_fill_manual(values = okabe_ito_palette) + # Aplicar la paleta de colores
+  theme_classic() +
+  labs(x = "Términos de Pago", y = "Número de Facturas", fill = "Nombre del Proveedor") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    axis.text.y = element_text(face = "bold", colour = "black"),
+    axis.title.x = element_text(face = "bold", colour = "black"),
+    axis.title.y = element_text(face = "bold", colour = "black"),
+    legend.title = element_text(face = "bold", colour = "black"),
+    legend.text = element_text(colour = "black")
+  )
+
+# Exportar la gráfica modificada
+ggsave("./assets/f5.jpg", f5, width = 10, height = 6, units = "in", dpi = 600)
+
+# * Correlación entre el valor total de la factura y el número de ítems
+
+# Calcular el valor total de cada factura
+datos_completos$valor_total <- datos_completos$unit_price * datos_completos$quantity
+
+library(ggplot2)
+
+# Asumiendo que datos_completos y las transformaciones ya están definidas
+
+# Crear la gráfica de dispersión con la línea de tendencia, el eje x en escala logarítmica,
+# y la densidad de puntos visualizada mediante contornos de densidad
+f6 <- ggplot(datos_completos, aes(x = valor_total, y = quantity)) +
+  geom_point(alpha = 0.5) + # Ajustar la transparencia de los puntos
+  geom_density2d(aes(color = ..level..)) + # Añadir contornos de densidad coloreados por nivel
+  geom_smooth(method = "lm", se = FALSE, color = "#1a39b6") +
+  scale_x_log10() + # Aplicar escala logarítmica al eje x
+  scale_color_viridis_c() + # Usar una paleta de colores continua para los contornos
+  theme_classic() +
+  labs(x = "Valor Total de la Factura (Escala Logarítmica)", y = "Número de Ítems", color = "Densidad") +
+  theme(
+    axis.text.x = element_text(face = "bold", colour = "black"),
+    axis.text.y = element_text(face = "bold", colour = "black"),
+    axis.title.x = element_text(face = "bold", colour = "black"),
+    axis.title.y = element_text(face = "bold", colour = "black")
+  )
+
+# Exportar la gráfica
+ggsave("./assets/f6.jpg", f6, width = 10, height = 6, units = "in", dpi = 600)
 
 # *** ShinyApp interactivo ----------------------------------------------------
 # ? shiny
